@@ -1,0 +1,256 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+# TODO think what to do with this - from sklearn.model_selection import KFold
+
+
+
+
+
+class decisionTree(object):
+
+    # TODO - open when we want to add gizom
+    # def __init__(self, data, new_M, new_gizom):
+    def __init__(self, data):
+        self.data = data
+        self.classification = None
+        self.divider_feature = None
+        self.divider_value = None
+        self.big = None
+        self.small = None
+        # self.gizom = new_gizom
+        # self.M = new_M
+
+    # TODO - open when we want to add gizom
+    def get_classification_tree(self):
+        self.divider_feature, self.divider_value = self.get_divider_feature()
+        if self.divider_feature is None:
+            return
+        self.data = self.data[np.argsort(self.data[:, self.divider_feature])]
+        row_to_split_by = 0
+        for row in self.data:
+            if row[self.divider_feature] >= self.divider_value:
+                break
+            row_to_split_by += 1
+        small_array = self.data[:row_to_split_by, :]
+        big_array = self.data[row_to_split_by:, :]
+        # self.bigger = decisionTree(bigger, self.M, self.gizom)
+        # self.smaller = decisionTree(smaller, self.M, self.gizom)
+        self.big = decisionTree(big_array)
+        self.big.get_classification_tree()
+        self.small = decisionTree(small_array)
+        self.small.get_classification_tree()
+
+    # TODO - open when we want to add gizom
+    def get_id3_value(self, feature, value):
+        small_healthy = 0
+        small_sick = 0
+        big_healthy = 0
+        big_sick = 0
+        for row in self.data:
+            if row[feature] < value:
+                if row[0] == 'M':
+                    small_sick += 1
+                else:
+                    small_healthy += 1
+            else:
+                if row[0] == 'M':
+                    big_sick += 1
+                else:
+                    big_healthy += 1
+
+        small_subjects = small_sick + small_healthy
+        big_subjects = big_sick + big_healthy
+        # if self.gizom:
+        #     if smaller_size < self.M or bigger_size < self.M:
+        #         return None
+        # else:
+        #     if smaller_size == 0 or bigger_size == 0:
+        #         return None
+        if small_subjects == 0 or big_subjects == 0:
+            return None
+
+        info_gain = 0
+        sick_ratio = (small_sick + big_sick) / len(self.data)
+        healthy_ratio = (small_healthy + big_healthy) / len(self.data)
+        if sick_ratio != 0 and healthy_ratio != 0:
+            sum_entropy = -(sick_ratio * np.log2(sick_ratio) + healthy_ratio * np.log2(healthy_ratio))
+            info_gain += sum_entropy
+
+        if small_sick != 0 and small_healthy != 0:
+            small_sick_ratio = small_sick / small_subjects
+            small_healthy_ratio = small_healthy / small_subjects
+            small_entropy = -(small_sick_ratio * np.log2(small_sick_ratio) + small_healthy_ratio * np.log2(small_healthy_ratio))
+            info_gain -= (small_subjects / len(self.data)) * small_entropy
+
+        if big_sick != 0 and big_healthy != 0:
+            big_sick_ratio = big_sick / big_subjects
+            big_healthy_ratio = big_healthy / big_subjects
+            big_entropy = -(big_sick_ratio * np.log2(big_sick_ratio) + big_healthy_ratio * np.log2(big_healthy_ratio))
+            info_gain -= (big_subjects / len(self.data)) * big_entropy
+        return info_gain
+
+    def get_all_values_for_feature(self, feature):
+        feature_values = self.data[:,feature]
+        feature_values = list(dict.fromkeys(feature_values))
+        feature_values.sort()
+        result = []
+        for j in range(1, len(feature_values)):
+            result.append((feature_values[j] + feature_values[j - 1]) / 2)
+        return result
+
+    def get_divider_feature(self):
+        if self.is_identical_and_classify() is True:
+            return None, None
+        feature = len(self.data[0]) - 1
+        info_gain = {}
+        while feature != 0:
+            feature_values = self.get_all_values_for_feature(feature)
+            for value in feature_values:
+                info_gain_value = self.get_id3_value(feature, value)
+                if info_gain_value is not None and info_gain_value not in info_gain:
+                    info_gain[info_gain_value] = (feature, value)
+            feature -= 1
+
+        if len(info_gain.keys()) == 0:  # no feature found
+            self.classify()
+            return None, None
+
+        max_info_gain = max(info_gain.keys())
+        return info_gain[max_info_gain][0], info_gain[max_info_gain][1]
+
+    def classify(self):
+        b_count, m_count = 0, 0
+        for row in self.data:
+            if row[0] == 'M':
+                m_count += 1
+            else:
+                b_count += 1
+        if b_count > m_count:
+            self.classification = 'B'
+        else:
+            self.classification = 'M'
+
+    def is_identical_and_classify(self):
+        b_num = 0
+        m_num = 0
+        for row in self.data:
+            if row[0] == 'M':
+                m_num += 1
+            else:
+                b_num += 1
+        if b_num == 0:
+            self.classification = 'M'
+            return True
+        elif m_num == 0:
+            self.classification = 'B'
+            return True
+        return False
+
+
+# for runing experiment go to main and there take off relevant - '''
+def experiment(train_data):
+    m_list = [1, 2, 5, 8, 10]  # change for diffrent M values
+    precisions_list = []
+    for m in m_list:
+        precision_for_all = 0
+        kf = KFold(n_splits=5, shuffle=True, random_state=318254190)
+        indexes = kf.split(train_data)
+        decision_tree = ID3Algo(m, True)
+        for train_index, test_index in indexes:
+            new_test_list = []
+            new_train_list = []
+            for i in range(len(train_data)):
+                if i in train_index:
+                    new_train_list.append(train_data[i])
+                else:
+                    new_test_list.append(train_data[i])
+            decision_tree.handle_train_data(new_train_list)
+            precision = decision_tree.handle_test_data(new_test_list)
+            precision_for_all += precision
+        precision_for_all = precision_for_all / 5
+        precisions_list.append(precision_for_all)
+    plt.plot(m_list, precisions_list, color='red', linestyle='dashed', linewidth=3, marker='o', markerfacecolor='red',
+             markersize=12)
+    plt.xlabel('M values')
+    plt.ylabel('precision values')
+    plt.show()
+
+
+
+
+
+class ID3Algo(object):
+
+    # TODO - open when we want to add gizom
+    # def __init__(self, new_m=1, new_gizom=False):
+    def __init__(self):
+        self.decision_tree = None
+        # self.gizom = new_gizom
+        # self.M = new_m
+
+    # TODO - open when we want to add gizom
+    def fit_predict(self, train, test):
+        # self.decision_tree = decisionTree(train_data, self.M, self.gizom)
+        self.decision_tree = decisionTree(train)
+        self.decision_tree.get_classification_tree()
+
+        # self.decision_tree.handle_test_data(test)
+        wrong_counter = 0
+        right_counter = 0
+        classification_list = []
+        for row in test:
+            current_decision_tree = self.decision_tree
+            while current_decision_tree.divider_feature is not None:
+                if row[current_decision_tree.divider_feature] < current_decision_tree.divider_value:
+                    current_decision_tree = current_decision_tree.small
+                else:
+                    current_decision_tree = current_decision_tree.big
+            if current_decision_tree.classification != row[0]:
+                wrong_counter += 1
+            else:
+                right_counter += 1
+            if current_decision_tree.classification == 'M':
+                classification_list.append(1)
+            else:
+                classification_list.append(0)
+
+        # if self.gizom is False:
+        print(right_counter / (right_counter + wrong_counter))
+        # else:
+        #     return right / (right + wrong)
+        return classification_list
+
+
+def main():
+
+    # decision_tree = ID3Algo()
+    # decision_tree.handle_train_data(train_data)
+    # decision_tree.handle_test_data(test_data)
+
+
+    train_set = pd.read_csv('train.csv', sep=',', header=None)
+    train_set_ndarray = train_set.to_numpy()
+    test_set = pd.read_csv('test.csv', sep=',', header=None)
+    test_set_ndarray = test_set.to_numpy()
+    ID3_result = ID3Algo()
+    numpy_array = ID3_result.fit_predict(train_set_ndarray,test_set_ndarray)
+    print(numpy_array)
+
+    '''
+    #3.3 for running the experiment function
+
+    experiment(train_data)
+    '''
+
+    '''
+    #3.4 - to print the percision with purrning for M=1
+
+    decision_tree = ID3Algo(1, True)
+    decision_tree.handle_train_data(train_data)
+    print(decision_tree.handle_test_data(test_data))
+    '''
+
+
+if __name__ == '__main__':
+    main()
