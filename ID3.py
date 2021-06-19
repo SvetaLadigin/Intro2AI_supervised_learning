@@ -142,7 +142,7 @@ class decisionTree(object):
 
 # for runing experiment go to main and there take off relevant - '''
 def experiment(train_set):
-    M_list = [1, 5, 10, 15, 50]  # change for different M values
+    M_list = [1, 5, 10, 18, 50]  # change for different M values
     precisions_list = []
     for M in M_list:
         precision_sum = 0
