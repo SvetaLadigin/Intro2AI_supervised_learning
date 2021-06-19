@@ -197,10 +197,10 @@ def experiment(train_set):
                 if (numpy_array[i] == 1 and test_sub_set[i][0] == 'M') or \
                         (numpy_array[i] == 0 and test_sub_set[i][0] == 'B'):
                     right_counter += 1
-                elif numpy_array[i] == 1 and test_sub_set[i][0] == 'B':
-                    wrong_counter += 1
-                else:
+                elif numpy_array[i] == 0 and test_sub_set[i][0] == 'M':
                     wrong_counter += 8
+                else:
+                    wrong_counter += 1
             sum_wrong_counter += wrong_counter
             precision_sum += right_counter / (right_counter + wrong_counter)
         print("avg:" + str(sum_wrong_counter / 5))
