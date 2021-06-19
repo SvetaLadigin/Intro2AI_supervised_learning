@@ -34,34 +34,34 @@ class decisionTree(object):
         self.small.get_classification_tree()
 
     def get_id3_value(self, feature, value):
-        small_healthy = 0
-        small_sick = 0
         big_healthy = 0
         big_sick = 0
+        small_healthy = 0
+        small_sick = 0
+        info_gain = 0
+
         for row in self.data:
-            if row[feature] < value:
-                if row[0] == 'M':
-                    small_sick += 1
-                else:
-                    small_healthy += 1
-            else:
-                if row[0] == 'M':
-                    big_sick += 1
-                else:
+            if row[feature] >= value:
+                if row[0] == 'B':
                     big_healthy += 1
+                else:
+                    big_sick += 1
+            else:
+                if row[0] == 'B':
+                    small_healthy += 1
+                else:
+                    small_sick += 1
 
         small_subjects = small_sick + small_healthy
         big_subjects = big_sick + big_healthy
 
-        if self.pruning:
+        if self.pruning == True:
             if small_subjects < self.M or big_subjects < self.M:
                 return None
         else:
             if small_subjects == 0 or big_subjects == 0:
                 return None
 
-
-        info_gain = 0
         sick_ratio = (small_sick + big_sick) / len(self.data)
         healthy_ratio = (small_healthy + big_healthy) / len(self.data)
         if sick_ratio != 0 and healthy_ratio != 0:
@@ -79,8 +79,8 @@ class decisionTree(object):
             big_healthy_ratio = big_healthy / big_subjects
             big_entropy = -(big_sick_ratio * np.log2(big_sick_ratio) + big_healthy_ratio * np.log2(big_healthy_ratio))
             info_gain -= (big_subjects / len(self.data)) * big_entropy
-        return info_gain
 
+        return info_gain
 
     def get_all_values_for_feature(self, feature):
         feature_values = self.data[:,feature]
@@ -111,18 +111,6 @@ class decisionTree(object):
         max_info_gain = max(info_gain.keys())
         return info_gain[max_info_gain][0], info_gain[max_info_gain][1]
 
-    def classify(self):
-        b_count, m_count = 0, 0
-        for row in self.data:
-            if row[0] == 'M':
-                m_count += 1
-            else:
-                b_count += 1
-        if b_count > m_count:
-            self.classification = 'B'
-        else:
-            self.classification = 'M'
-
     def is_identical_and_classify(self):
         b_num = 0
         m_num = 0
@@ -139,15 +127,55 @@ class decisionTree(object):
             return True
         return False
 
+    def classify(self):
+        b_num = 0
+        m_num = 0
 
-# for runing experiment go to main and there take off relevant - '''
+        for row in self.data:
+            if row[0] == 'M':
+                m_num += 1
+            else:
+                b_num += 1
+
+        if b_num > m_num:
+            self.classification = 'B'
+        else:
+            self.classification = 'M'
+
+
+class ID3Algo(object):
+
+    def __init__(self, M=1, pruning=False):
+        self.decision_tree = None
+        self.pruning = pruning
+        self.M = M
+
+    def fit_predict(self, train, test):
+        self.decision_tree = decisionTree(train, self.M, self.pruning)
+        self.decision_tree.get_classification_tree()
+        classification_list = []
+        for row in test:
+            current_decision_tree = self.decision_tree
+            while current_decision_tree.divider_feature is not None:
+                if row[current_decision_tree.divider_feature] < current_decision_tree.divider_value:
+                    current_decision_tree = current_decision_tree.small
+                else:
+                    current_decision_tree = current_decision_tree.big
+
+            if current_decision_tree.classification == 'M':
+                classification_list.append(1)
+            else:
+                classification_list.append(0)
+        return classification_list
+
+
 def experiment(train_set):
-    M_list = [0, 1, 5, 10, 20,30, 50]  # change for different M values
+    M_list = [1,2,3,4 ,5,6,7,8,9, 10,11,12,13,14, 15,16,17,18,19, 20, 25, 50]
     precisions_list = []
     for M in M_list:
         precision_sum = 0
         ID3_result = ID3Algo(M, True)
-        kf = KFold(n_splits=5, shuffle=True, random_state=308532571)
+        kf = KFold(n_splits=5, shuffle=True, random_state=319649778)
         indexes = kf.split(train_set)
         for train_set_index, test_set_index in indexes:
             sub_test_list = []
@@ -168,50 +196,13 @@ def experiment(train_set):
                     right_counter += 1
                 else:
                     wrong_counter += 1
-            precision_sum += right_counter / (right_counter + 8*wrong_counter)
+            precision_sum += right_counter / (right_counter + wrong_counter)
         precision_avg = precision_sum / 5
         precisions_list.append(precision_avg)
-    print(precisions_list)
-    plt.plot(M_list, precisions_list, color='green', linestyle='solid', linewidth=2, marker='o', markerfacecolor='green', markersize=12)
-    plt.xlabel('M values')
-    plt.ylabel('precision values')
+    plt.plot(M_list, precisions_list, color='green', linestyle='solid', linewidth=1, marker='o', markerfacecolor='green', markersize=5)
+    plt.xlabel('pruning values')
+    plt.ylabel('precision')
     plt.show()
-
-
-
-
-
-class ID3Algo(object):
-
-    def __init__(self, M = 1, pruning = False):
-        self.decision_tree = None
-        self.pruning = pruning
-        self.M = M
-
-    def fit_predict(self, train, test):
-        self.decision_tree = decisionTree(train, self.M, self.pruning)
-        self.decision_tree.get_classification_tree()
-
-        wrong_counter = 0
-        right_counter = 0
-        classification_list = []
-        for row in test:
-            current_decision_tree = self.decision_tree
-            while current_decision_tree.divider_feature is not None:
-                if row[current_decision_tree.divider_feature] < current_decision_tree.divider_value:
-                    current_decision_tree = current_decision_tree.small
-                else:
-                    current_decision_tree = current_decision_tree.big
-            if current_decision_tree.classification != row[0]:
-                wrong_counter += 1
-            else:
-                right_counter += 1
-            if current_decision_tree.classification == 'M':
-                classification_list.append(1)
-            else:
-                classification_list.append(0)
-
-        return classification_list
 
 
 def main():
@@ -219,18 +210,9 @@ def main():
     train_set_ndarray = train_set.to_numpy()
 
     '''
-    3.3 for running the experiment function
+    #  this note is for question 3 - the experiment part   
     '''
     experiment(train_set_ndarray)
-
-    '''
-    #3.4 - to print the percision with purrning for M=1
-
-    decision_tree = ID3Algo(1, True)
-    decision_tree.handle_train_data(train_data)
-    print(decision_tree.handle_test_data(test_data))
-    '''
-
 
 if __name__ == '__main__':
     main()
