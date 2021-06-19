@@ -142,7 +142,7 @@ class decisionTree(object):
 
 # for runing experiment go to main and there take off relevant - '''
 def experiment(train_set):
-    M_list = [1, 5, 10, 18, 50]  # change for different M values
+    M_list = [0, 1, 5, 10, 20,30, 50]  # change for different M values
     precisions_list = []
     for M in M_list:
         precision_sum = 0
@@ -168,9 +168,10 @@ def experiment(train_set):
                     right_counter += 1
                 else:
                     wrong_counter += 1
-            precision_sum += right_counter / (right_counter + wrong_counter)
+            precision_sum += right_counter / (right_counter + 8*wrong_counter)
         precision_avg = precision_sum / 5
         precisions_list.append(precision_avg)
+    print(precisions_list)
     plt.plot(M_list, precisions_list, color='green', linestyle='solid', linewidth=2, marker='o', markerfacecolor='green', markersize=12)
     plt.xlabel('M values')
     plt.ylabel('precision values')
