@@ -145,7 +145,7 @@ class decisionTree(object):
         else:
             self.classification = 'M'
 
-class ID3Algo(object):
+class PersonalizedID3(object):
 
     def __init__(self, M=1, pruning=False):
         self.decision_tree = None
@@ -176,7 +176,7 @@ def experiment(train_set):
     precisions_list = []
     for M in M_list:
         precision_sum = 0
-        ID3_result = ID3Algo(M, True)
+        ID3_result = PersonalizedID3(M, True)
         kf = KFold(n_splits=5, shuffle=True, random_state=319649778)
         indexes = kf.split(train_set)
         for train_set_index, test_set_index in indexes:
