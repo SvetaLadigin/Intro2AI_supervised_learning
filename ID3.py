@@ -1,27 +1,21 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-# TODO think what to do with this - from sklearn.model_selection import KFold
-
-
-
+from sklearn.model_selection import KFold
 
 
 class decisionTree(object):
 
-    # TODO - open when we want to add gizom
-    # def __init__(self, data, new_M, new_gizom):
-    def __init__(self, data):
+    def __init__(self, data, M, pruning):
         self.data = data
         self.classification = None
         self.divider_feature = None
         self.divider_value = None
         self.big = None
         self.small = None
-        # self.gizom = new_gizom
-        # self.M = new_M
+        self.pruning = pruning
+        self.M = M
 
-    # TODO - open when we want to add gizom
     def get_classification_tree(self):
         self.divider_feature, self.divider_value = self.get_divider_feature()
         if self.divider_feature is None:
@@ -34,14 +28,11 @@ class decisionTree(object):
             row_to_split_by += 1
         small_array = self.data[:row_to_split_by, :]
         big_array = self.data[row_to_split_by:, :]
-        # self.bigger = decisionTree(bigger, self.M, self.gizom)
-        # self.smaller = decisionTree(smaller, self.M, self.gizom)
-        self.big = decisionTree(big_array)
+        self.big = decisionTree(big_array, self.M, self.pruning)
         self.big.get_classification_tree()
-        self.small = decisionTree(small_array)
+        self.small = decisionTree(small_array, self.M, self.pruning)
         self.small.get_classification_tree()
 
-    # TODO - open when we want to add gizom
     def get_id3_value(self, feature, value):
         small_healthy = 0
         small_sick = 0
@@ -61,14 +52,14 @@ class decisionTree(object):
 
         small_subjects = small_sick + small_healthy
         big_subjects = big_sick + big_healthy
-        # if self.gizom:
-        #     if smaller_size < self.M or bigger_size < self.M:
-        #         return None
-        # else:
-        #     if smaller_size == 0 or bigger_size == 0:
-        #         return None
-        if small_subjects == 0 or big_subjects == 0:
-            return None
+
+        if self.pruning:
+            if small_subjects < self.M or big_subjects < self.M:
+                return None
+        else:
+            if small_subjects == 0 or big_subjects == 0:
+                return None
+
 
         info_gain = 0
         sick_ratio = (small_sick + big_sick) / len(self.data)
@@ -89,6 +80,7 @@ class decisionTree(object):
             big_entropy = -(big_sick_ratio * np.log2(big_sick_ratio) + big_healthy_ratio * np.log2(big_healthy_ratio))
             info_gain -= (big_subjects / len(self.data)) * big_entropy
         return info_gain
+
 
     def get_all_values_for_feature(self, feature):
         feature_values = self.data[:,feature]
@@ -149,29 +141,37 @@ class decisionTree(object):
 
 
 # for runing experiment go to main and there take off relevant - '''
-def experiment(train_data):
-    m_list = [1, 2, 5, 8, 10]  # change for diffrent M values
+def experiment(train_set):
+    M_list = [1,3, 5,7, 10,12,18, 20,23, 25,50,100]  # change for different M values
     precisions_list = []
-    for m in m_list:
-        precision_for_all = 0
-        kf = KFold(n_splits=5, shuffle=True, random_state=318254190)
-        indexes = kf.split(train_data)
-        decision_tree = ID3Algo(m, True)
-        for train_index, test_index in indexes:
-            new_test_list = []
-            new_train_list = []
-            for i in range(len(train_data)):
-                if i in train_index:
-                    new_train_list.append(train_data[i])
+    for M in M_list:
+        precision_sum = 0
+        ID3_result = ID3Algo(M, True)
+        kf = KFold(n_splits=5, shuffle=True, random_state=308532571)
+        indexes = kf.split(train_set)
+        for train_set_index, test_set_index in indexes:
+            sub_test_list = []
+            sub_train_list = []
+            for i in range(len(train_set)):
+                if i in train_set_index:
+                    sub_train_list.append(train_set[i])
                 else:
-                    new_test_list.append(train_data[i])
-            decision_tree.handle_train_data(new_train_list)
-            precision = decision_tree.handle_test_data(new_test_list)
-            precision_for_all += precision
-        precision_for_all = precision_for_all / 5
-        precisions_list.append(precision_for_all)
-    plt.plot(m_list, precisions_list, color='red', linestyle='dashed', linewidth=3, marker='o', markerfacecolor='red',
-             markersize=12)
+                    sub_test_list.append(train_set[i])
+            test_sub_set = np.array(sub_test_list)
+            train_sub_set = np.array(sub_train_list)
+            numpy_array = ID3_result.fit_predict(train_sub_set, test_sub_set)
+            right_counter = 0
+            wrong_counter = 0
+            for i in range(len(numpy_array)):
+                if (numpy_array[i] == 1 and test_sub_set[i][0] == 'M') or \
+                        (numpy_array[i] == 0 and test_sub_set[i][0] == 'B'):
+                    right_counter += 1
+                else:
+                    wrong_counter += 1
+            precision_sum += right_counter / (right_counter + wrong_counter)
+        precision_avg = precision_sum / 5
+        precisions_list.append(precision_avg)
+    plt.plot(M_list, precisions_list, color='green', linestyle='solid', linewidth=2, marker='o', markerfacecolor='green', markersize=12)
     plt.xlabel('M values')
     plt.ylabel('precision values')
     plt.show()
@@ -182,20 +182,15 @@ def experiment(train_data):
 
 class ID3Algo(object):
 
-    # TODO - open when we want to add gizom
-    # def __init__(self, new_m=1, new_gizom=False):
-    def __init__(self):
+    def __init__(self, M = 1, pruning = False):
         self.decision_tree = None
-        # self.gizom = new_gizom
-        # self.M = new_m
+        self.pruning = pruning
+        self.M = M
 
-    # TODO - open when we want to add gizom
     def fit_predict(self, train, test):
-        # self.decision_tree = decisionTree(train_data, self.M, self.gizom)
-        self.decision_tree = decisionTree(train)
+        self.decision_tree = decisionTree(train, self.M, self.pruning)
         self.decision_tree.get_classification_tree()
 
-        # self.decision_tree.handle_test_data(test)
         wrong_counter = 0
         right_counter = 0
         classification_list = []
@@ -215,33 +210,17 @@ class ID3Algo(object):
             else:
                 classification_list.append(0)
 
-        # if self.gizom is False:
-        print(right_counter / (right_counter + wrong_counter))
-        # else:
-        #     return right / (right + wrong)
         return classification_list
 
 
 def main():
-
-    # decision_tree = ID3Algo()
-    # decision_tree.handle_train_data(train_data)
-    # decision_tree.handle_test_data(test_data)
-
-
     train_set = pd.read_csv('train.csv', sep=',', header=None)
     train_set_ndarray = train_set.to_numpy()
-    test_set = pd.read_csv('test.csv', sep=',', header=None)
-    test_set_ndarray = test_set.to_numpy()
-    ID3_result = ID3Algo()
-    numpy_array = ID3_result.fit_predict(train_set_ndarray,test_set_ndarray)
-    print(numpy_array)
 
     '''
-    #3.3 for running the experiment function
-
-    experiment(train_data)
+    3.3 for running the experiment function
     '''
+    experiment(train_set_ndarray)
 
     '''
     #3.4 - to print the percision with purrning for M=1
