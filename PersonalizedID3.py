@@ -39,6 +39,8 @@ class decisionTree(object):
         big_sick = 0
         small_healthy = 0
         small_sick = 0
+        pruning_sick_small = 0
+        pruning_sick_big = 0
         info_gain = 0
 
         for row in self.data:
@@ -47,18 +49,27 @@ class decisionTree(object):
                     big_healthy += 1
                 else:
                     big_sick += 1
+                    pruning_sick_big += 8
             else:
                 if row[0] == 'B':
                     small_healthy += 1
                 else:
                     small_sick += 1
+                    pruning_sick_small += 8
 
         small_subjects = small_sick + small_healthy
         big_subjects = big_sick + big_healthy
+        small_subjects_pruning = pruning_sick_small + small_healthy
+        big_subjects_pruning = pruning_sick_big + big_healthy
+
+        # if self.pruning == True:
+        #     if small_subjects_pruning < self.M or big_subjects_pruning < self.M:
+        #         return None
 
         if self.pruning == True:
-            if small_subjects < self.M or big_subjects < self.M:
+            if small_subjects-big_subjects > 8:
                 return None
+
         else:
             if small_subjects == 0 or big_subjects == 0:
                 return None
@@ -197,10 +208,10 @@ def experiment(train_set):
                 if (numpy_array[i] == 1 and test_sub_set[i][0] == 'M') or \
                         (numpy_array[i] == 0 and test_sub_set[i][0] == 'B'):
                     right_counter += 1
-                elif numpy_array[i] == 1 and test_sub_set[i][0] == 'B':
-                    wrong_counter += 1
-                else:
+                elif numpy_array[i] == 0 and test_sub_set[i][0] == 'M':
                     wrong_counter += 8
+                else:
+                    wrong_counter += 1
             sum_wrong_counter += wrong_counter
             precision_sum += right_counter / (right_counter + wrong_counter)
         print("avg:" + str(sum_wrong_counter / 5))

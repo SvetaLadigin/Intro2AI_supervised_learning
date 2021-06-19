@@ -56,7 +56,8 @@ class decisionTree(object):
         big_subjects = big_sick + big_healthy
 
         if self.pruning == True:
-            if small_subjects < self.M or big_subjects < self.M:
+            if small_subjects < \
+                    self.M or big_subjects < self.M:
                 return None
         else:
             if small_subjects == 0 or big_subjects == 0:
