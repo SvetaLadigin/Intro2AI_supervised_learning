@@ -1,8 +1,9 @@
-
+import copy
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import random as rd
 from sklearn.model_selection import KFold
 
 class decisionTree(object):
@@ -39,8 +40,6 @@ class decisionTree(object):
         big_sick = 0
         small_healthy = 0
         small_sick = 0
-        pruning_sick_small = 0
-        pruning_sick_big = 0
         info_gain = 0
 
         for row in self.data:
@@ -49,30 +48,42 @@ class decisionTree(object):
                     big_healthy += 1
                 else:
                     big_sick += 1
-                    pruning_sick_big += 8
             else:
                 if row[0] == 'B':
                     small_healthy += 1
                 else:
                     small_sick += 1
-                    pruning_sick_small += 8
 
         small_subjects = small_sick + small_healthy
         big_subjects = big_sick + big_healthy
-        small_subjects_pruning = pruning_sick_small + small_healthy
-        big_subjects_pruning = pruning_sick_big + big_healthy
+        #TODO - Q4 improvment - check if its good or not
 
-        # if self.pruning == True:
-        #     if small_subjects_pruning < self.M or big_subjects_pruning < self.M:
-        #         return None
-
-        if self.pruning == True:
-            if small_subjects-big_subjects > 8:
+        # healthy_sum = big_healthy + small_healthy
+        # sick_sum = big_sick + small_sick
+        # if healthy_sum / sick_sum >= 80 or sick_sum / healthy_sum >= 10:
+        #     return None
+        # TODO -END
+        if self.pruning == True :
+            if (small_subjects < self.M or big_subjects < self.M): #and (healthy_sum / sick_sum >= 1.5 or sick_sum / healthy_sum >= 1.5):
                 return None
+            # TODO - Q4 improvment - check if its good or not
+
+            # if small_subjects < self.M:
+            #     if healthy_sum / sick_sum >= 8 and small_healthy == 1:
+            #         return None
+            #     elif sick_sum / healthy_sum >= 1 and small_sick == 1:
+            #         return None
+            # if big_subjects < self.M:
+            #     if healthy_sum / sick_sum >= 8 and big_healthy == 1:
+            #         return None
+            #     elif sick_sum / healthy_sum >= 1 and big_sick == 1:
+            #         return None
+            # TODO -END
 
         else:
-            if small_subjects == 0 or big_subjects == 0:
+            if small_subjects == 0 or big_subjects == 0 :
                 return None
+
 
         sick_ratio = (small_sick + big_sick) / len(self.data)
         healthy_ratio = (small_healthy + big_healthy) / len(self.data)
@@ -139,6 +150,15 @@ class decisionTree(object):
         elif m_num == 0:
             self.classification = 'B'
             return True
+        # TODO - added for Q4 - check if its goo or remove it
+        # if m_num/b_num >= 10 and b_num <=7:
+        #     self.classification = 'M'
+        #     return True
+        #  if b_num/m_num >= 80 and m_num <=5:
+        #     self.classification = 'B'
+        #     return True
+        # TODO - END
+
         return False
 
     def classify(self):
@@ -183,46 +203,68 @@ class PersonalizedID3(object):
 
 #  TODO REMOVE PRINTS AND CALC FOR LOSS VALUE
 def experiment(train_set):
+    bootstrap_flag = False
     M_list = [2]  # ,3,4 ,5,6,7,8,9, 10,11,12,13,14, 15,16,17,18,19, 20, 25, 50]
     precisions_list = []
+    sum_wrong_counter = 0
+    bootstrap_train_set = []
+    indexes=0
+    if bootstrap_flag is True:
+        for i in range(10000):
+            index = rd.randrange(len(train_set))
+            bootstrap_train_set.append(train_set[index])
+        bootstrap_train_set = np.array(bootstrap_train_set)
     for M in M_list:
         precision_sum = 0
         ID3_result = PersonalizedID3(M, True)
         kf = KFold(n_splits=5, shuffle=True, random_state=319649778)
-        indexes = kf.split(train_set)
+        if bootstrap_flag is False:
+            indexes = kf.split(train_set)
+        else:
+            indexes = kf.split(bootstrap_train_set)
         for train_set_index, test_set_index in indexes:
             sub_test_list = []
             sub_train_list = []
-            for i in range(len(train_set)):
-                if i in train_set_index:
-                    sub_train_list.append(train_set[i])
-                else:
-                    sub_test_list.append(train_set[i])
+            if bootstrap_flag is False:
+                for i in range(len(train_set)):
+                    if i in train_set_index:
+                        sub_train_list.append(train_set[i])
+                    else:
+                        sub_test_list.append(train_set[i])
+            else:
+                for i in range(len(bootstrap_train_set)):
+                    if i in train_set_index:
+                        sub_train_list.append(bootstrap_train_set[i])
+                    else:
+                        sub_test_list.append(bootstrap_train_set[i])
             test_sub_set = np.array(sub_test_list)
             train_sub_set = np.array(sub_train_list)
             numpy_array = ID3_result.fit_predict(train_sub_set, test_sub_set)
             right_counter = 0
-            wrong_counter = 0
-            sum_wrong_counter = 0
+            wrong_counter_FP = 0
+            wrong_counter_FN = 0
             for i in range(len(numpy_array)):
                 if (numpy_array[i] == 1 and test_sub_set[i][0] == 'M') or \
                         (numpy_array[i] == 0 and test_sub_set[i][0] == 'B'):
                     right_counter += 1
                 elif numpy_array[i] == 0 and test_sub_set[i][0] == 'M':
-                    wrong_counter += 8
+                    wrong_counter_FN += 8
                 else:
-                    wrong_counter += 1
-            sum_wrong_counter += wrong_counter
-            precision_sum += right_counter / (right_counter + wrong_counter)
+                    wrong_counter_FP += 1
+            sum_wrong_counter += wrong_counter_FN+wrong_counter_FP
+            print("wrong counter FN:"+str(wrong_counter_FN))
+            print("wrong counter FP:"+str(wrong_counter_FP))
+            print("current sum of mistakes:"+str(sum_wrong_counter))
+            precision_sum += right_counter / (right_counter + wrong_counter_FN+wrong_counter_FP)
         print("avg:" + str(sum_wrong_counter / 5))
         precision_avg = precision_sum / 5
         precisions_list.append(precision_avg)
     print(precisions_list)
-    plt.plot(M_list, precisions_list, color='green', linestyle='solid', linewidth=1, marker='o',
-             markerfacecolor='green', markersize=5)
-    plt.xlabel('pruning values')
-    plt.ylabel('precision')
-    plt.show()
+    # plt.plot(M_list, precisions_list, color='green', linestyle='solid', linewidth=1, marker='o',
+    #          markerfacecolor='green', markersize=5)
+    # plt.xlabel('pruning values')
+    # plt.ylabel('precision')
+    # plt.show()
 
 
 def main():
