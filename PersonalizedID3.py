@@ -1,7 +1,6 @@
-import copy
-
 import numpy as np
 import pandas as pd
+import copy as cp
 import matplotlib.pyplot as plt
 import random as rd
 from sklearn.model_selection import KFold
@@ -58,14 +57,27 @@ class decisionTree(object):
         big_subjects = big_sick + big_healthy
         #TODO - Q4 improvment - check if its good or not
 
-        # healthy_sum = big_healthy + small_healthy
-        # sick_sum = big_sick + small_sick
+        healthy_sum = big_healthy + small_healthy
+        sick_sum = big_sick + small_sick
         # if healthy_sum / sick_sum >= 80 or sick_sum / healthy_sum >= 10:
         #     return None
         # TODO -END
         if self.pruning == True :
-            if (small_subjects < self.M or big_subjects < self.M): #and (healthy_sum / sick_sum >= 1.5 or sick_sum / healthy_sum >= 1.5):
+            if (small_subjects < self.M):
                 return None
+
+            #     if (small_sick and healthy_sum / sick_sum > 1):
+            #         return None
+            #     if (small_healthy and sick_sum / healthy_sum > 1):
+            #         return None
+            if(big_subjects < self.M):
+                return None
+
+            #     if (big_sick and healthy_sum / sick_sum > 1):
+            #         return None
+            #     if (big_healthy and sick_sum / healthy_sum > 1):
+            #         return None
+
             # TODO - Q4 improvment - check if its good or not
 
             # if small_subjects < self.M:
@@ -94,15 +106,13 @@ class decisionTree(object):
         if small_sick != 0 and small_healthy != 0:
             small_sick_ratio = small_sick / small_subjects
             small_healthy_ratio = small_healthy / small_subjects
-            small_entropy = -(small_sick_ratio * np.log2(small_sick_ratio) + small_healthy_ratio * np.log2(
-                small_healthy_ratio))
+            small_entropy = -(small_sick_ratio * np.log2(small_sick_ratio) + small_healthy_ratio * np.log2(small_healthy_ratio))
             info_gain -= (small_subjects / len(self.data)) * small_entropy
 
         if big_sick != 0 and big_healthy != 0:
             big_sick_ratio = big_sick / big_subjects
             big_healthy_ratio = big_healthy / big_subjects
-            big_entropy = -(
-                        big_sick_ratio * np.log2(big_sick_ratio) + big_healthy_ratio * np.log2(big_healthy_ratio))
+            big_entropy = -(big_sick_ratio * np.log2(big_sick_ratio) + big_healthy_ratio * np.log2(big_healthy_ratio))
             info_gain -= (big_subjects / len(self.data)) * big_entropy
 
         return info_gain
@@ -151,12 +161,12 @@ class decisionTree(object):
             self.classification = 'B'
             return True
         # TODO - added for Q4 - check if its goo or remove it
-        # if m_num/b_num >= 10 and b_num <=7:
-        #     self.classification = 'M'
-        #     return True
-        #  if b_num/m_num >= 80 and m_num <=5:
-        #     self.classification = 'B'
-        #     return True
+        if m_num/b_num >= 10 and b_num <=7:
+            self.classification = 'M'
+            return True
+        if b_num/m_num >= 40 and m_num <=2:
+            self.classification = 'B'
+            return True
         # TODO - END
 
         return False
@@ -203,40 +213,32 @@ class PersonalizedID3(object):
 
 #  TODO REMOVE PRINTS AND CALC FOR LOSS VALUE
 def experiment(train_set):
-    bootstrap_flag = False
+    bootstrap_flag = True
     M_list = [2]  # ,3,4 ,5,6,7,8,9, 10,11,12,13,14, 15,16,17,18,19, 20, 25, 50]
     precisions_list = []
-    sum_wrong_counter = 0
-    bootstrap_train_set = []
+    sum_loss = 0
+
     indexes=0
-    if bootstrap_flag is True:
-        for i in range(10000):
-            index = rd.randrange(len(train_set))
-            bootstrap_train_set.append(train_set[index])
-        bootstrap_train_set = np.array(bootstrap_train_set)
     for M in M_list:
         precision_sum = 0
         ID3_result = PersonalizedID3(M, True)
         kf = KFold(n_splits=5, shuffle=True, random_state=319649778)
-        if bootstrap_flag is False:
-            indexes = kf.split(train_set)
-        else:
-            indexes = kf.split(bootstrap_train_set)
+        indexes = kf.split(train_set)
         for train_set_index, test_set_index in indexes:
             sub_test_list = []
             sub_train_list = []
-            if bootstrap_flag is False:
-                for i in range(len(train_set)):
-                    if i in train_set_index:
-                        sub_train_list.append(train_set[i])
-                    else:
-                        sub_test_list.append(train_set[i])
-            else:
-                for i in range(len(bootstrap_train_set)):
-                    if i in train_set_index:
-                        sub_train_list.append(bootstrap_train_set[i])
-                    else:
-                        sub_test_list.append(bootstrap_train_set[i])
+            for i in range(len(train_set)):
+                if i in train_set_index:
+                    sub_train_list.append(train_set[i])
+                else:
+                    sub_test_list.append(train_set[i])
+            bootstrap_train_set = []
+            if bootstrap_flag is True:
+                for i in range(len(sub_train_list)*15):
+                    index = rd.randrange(len(sub_train_list))
+                    bootstrap_train_set.append(cp.deepcopy(sub_train_list[index]))
+                sub_train_list = np.array(bootstrap_train_set)
+
             test_sub_set = np.array(sub_test_list)
             train_sub_set = np.array(sub_train_list)
             numpy_array = ID3_result.fit_predict(train_sub_set, test_sub_set)
@@ -251,12 +253,11 @@ def experiment(train_set):
                     wrong_counter_FN += 8
                 else:
                     wrong_counter_FP += 1
-            sum_wrong_counter += wrong_counter_FN+wrong_counter_FP
             print("wrong counter FN:"+str(wrong_counter_FN))
             print("wrong counter FP:"+str(wrong_counter_FP))
-            print("current sum of mistakes:"+str(sum_wrong_counter))
+            sum_loss += wrong_counter_FN+wrong_counter_FP
             precision_sum += right_counter / (right_counter + wrong_counter_FN+wrong_counter_FP)
-        print("avg:" + str(sum_wrong_counter / 5))
+        print("avg loss:" + str(sum_loss / 5))
         precision_avg = precision_sum / 5
         precisions_list.append(precision_avg)
     print(precisions_list)
