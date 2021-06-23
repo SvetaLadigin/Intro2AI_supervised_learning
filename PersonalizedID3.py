@@ -64,19 +64,17 @@ class decisionTree(object):
         # TODO -END
         if self.pruning == True :
             if (small_subjects < self.M):
-                return None
-
-            #     if (small_sick and healthy_sum / sick_sum > 1):
-            #         return None
-            #     if (small_healthy and sick_sum / healthy_sum > 1):
-            #         return None
+                #return None
+                if (small_sick and healthy_sum / sick_sum > 120):
+                    return None
+                if (small_healthy and sick_sum / healthy_sum > 20):
+                    return None
             if(big_subjects < self.M):
-                return None
-
-            #     if (big_sick and healthy_sum / sick_sum > 1):
-            #         return None
-            #     if (big_healthy and sick_sum / healthy_sum > 1):
-            #         return None
+                #return None
+                if (big_sick and healthy_sum / sick_sum > 120):
+                    return None
+                if (big_healthy and sick_sum / healthy_sum > 20):
+                    return None
 
             # TODO - Q4 improvment - check if its good or not
 
@@ -161,12 +159,12 @@ class decisionTree(object):
             self.classification = 'B'
             return True
         # TODO - added for Q4 - check if its goo or remove it
-        if m_num/b_num >= 10 and b_num <=7:
+        if m_num/b_num >=10 and b_num <=7:
             self.classification = 'M'
             return True
-        if b_num/m_num >= 40 and m_num <=2:
-            self.classification = 'B'
-            return True
+        # if b_num/m_num >= 100 and m_num <=3:
+        #     self.classification = 'B'
+        #     return True
         # TODO - END
 
         return False
@@ -188,24 +186,110 @@ class decisionTree(object):
 
 class PersonalizedID3(object):
 
-    def __init__(self, M=1, pruning=False):
+    def __init__(self, M=1, pruning=True):
         self.decision_tree = None
         self.pruning = pruning
         self.M = M
 
     def fit_predict(self, train, test):
-        self.decision_tree = decisionTree(train, self.M, self.pruning)
+        bootstrap_train_set = []
+        size_of_boot_strap = len(train)*15
+        if size_of_boot_strap %5 == 1:
+            size_of_boot_strap +=4
+        if size_of_boot_strap % 5 == 2:
+            size_of_boot_strap += 3
+        if size_of_boot_strap % 5 == 3:
+            size_of_boot_strap += 2
+        if size_of_boot_strap % 5 == 4:
+            size_of_boot_strap += 1
+        for i in range(size_of_boot_strap):
+            index = rd.randrange(len(train))
+            bootstrap_train_set.append(cp.deepcopy(train[index]))
+        train = np.array(bootstrap_train_set)
+
+        train_1 ,train_2, train_3,train_4, train_5 = np.vsplit(train, 5)
+
+        self.decision_tree = decisionTree(train_1, self.M, self.pruning)
         self.decision_tree.get_classification_tree()
+        decision_tree_1 = cp.deepcopy(self.decision_tree)
+
+        self.decision_tree = decisionTree(train_2, self.M, self.pruning)
+        self.decision_tree.get_classification_tree()
+        decision_tree_2 = cp.deepcopy(self.decision_tree)
+
+        self.decision_tree = decisionTree(train_3, self.M, self.pruning)
+        self.decision_tree.get_classification_tree()
+        decision_tree_3 = cp.deepcopy(self.decision_tree)
+
+        self.decision_tree = decisionTree(train_4 ,self.M, self.pruning)
+        self.decision_tree.get_classification_tree()
+        decision_tree_4 = cp.deepcopy(self.decision_tree)
+
+        self.decision_tree = decisionTree(train_5, self.M, self.pruning)
+        self.decision_tree.get_classification_tree()
+        decision_tree_5 = cp.deepcopy(self.decision_tree)
+
         classification_list = []
         for row in test:
-            current_decision_tree = self.decision_tree
-            while current_decision_tree.divider_feature is not None:
-                if row[current_decision_tree.divider_feature] < current_decision_tree.divider_value:
-                    current_decision_tree = current_decision_tree.small
+            current_decision_tree_1 = decision_tree_1
+            while current_decision_tree_1.divider_feature is not None:
+                if row[current_decision_tree_1.divider_feature] < current_decision_tree_1.divider_value:
+                    current_decision_tree_1 = current_decision_tree_1.small
                 else:
-                    current_decision_tree = current_decision_tree.big
+                    current_decision_tree_1 = current_decision_tree_1.big
 
-            if current_decision_tree.classification == 'M':
+            current_decision_tree_2 = decision_tree_2
+            while current_decision_tree_2.divider_feature is not None:
+                if row[current_decision_tree_2.divider_feature] < current_decision_tree_2.divider_value:
+                    current_decision_tree_2 = current_decision_tree_2.small
+                else:
+                    current_decision_tree_2 = current_decision_tree_2.big
+
+            current_decision_tree_3 = decision_tree_3
+            while current_decision_tree_3.divider_feature is not None:
+                if row[current_decision_tree_3.divider_feature] < current_decision_tree_3.divider_value:
+                    current_decision_tree_3 = current_decision_tree_3.small
+                else:
+                    current_decision_tree_3 = current_decision_tree_3.big
+
+            current_decision_tree_4 = decision_tree_4
+            while current_decision_tree_4.divider_feature is not None:
+                if row[current_decision_tree_4.divider_feature] < current_decision_tree_4.divider_value:
+                    current_decision_tree_4 = current_decision_tree_4.small
+                else:
+                    current_decision_tree_4 = current_decision_tree_4.big
+
+            current_decision_tree_5 = decision_tree_5
+            while current_decision_tree_5.divider_feature is not None:
+                if row[current_decision_tree_5.divider_feature] < current_decision_tree_5.divider_value:
+                    current_decision_tree_5 = current_decision_tree_5.small
+                else:
+                    current_decision_tree_5 = current_decision_tree_5.big
+
+            M_counter = 0
+            B_counter = 0
+
+            if current_decision_tree_1.classification == 'M':
+                M_counter += 1
+            else:
+                B_counter += 1
+            if current_decision_tree_2.classification == 'M':
+                M_counter += 1
+            else:
+                B_counter += 1
+            if current_decision_tree_3.classification == 'M':
+                M_counter += 1
+            else:
+                B_counter += 1
+            if current_decision_tree_4.classification == 'M':
+                M_counter += 1
+            else:
+                B_counter += 1
+            if current_decision_tree_5.classification == 'M':
+                M_counter += 1
+            else:
+                B_counter += 1
+            if M_counter > B_counter:
                 classification_list.append(1)
             else:
                 classification_list.append(0)
@@ -213,7 +297,8 @@ class PersonalizedID3(object):
 
 #  TODO REMOVE PRINTS AND CALC FOR LOSS VALUE
 def experiment(train_set):
-    bootstrap_flag = True
+    bootstrap_flag = False
+
     M_list = [2]  # ,3,4 ,5,6,7,8,9, 10,11,12,13,14, 15,16,17,18,19, 20, 25, 50]
     precisions_list = []
     sum_loss = 0
@@ -221,7 +306,7 @@ def experiment(train_set):
     indexes=0
     for M in M_list:
         precision_sum = 0
-        ID3_result = PersonalizedID3(M, True)
+        ID3_result = PersonalizedID3(M)
         kf = KFold(n_splits=5, shuffle=True, random_state=319649778)
         indexes = kf.split(train_set)
         for train_set_index, test_set_index in indexes:
@@ -232,13 +317,6 @@ def experiment(train_set):
                     sub_train_list.append(train_set[i])
                 else:
                     sub_test_list.append(train_set[i])
-            bootstrap_train_set = []
-            if bootstrap_flag is True:
-                for i in range(len(sub_train_list)*15):
-                    index = rd.randrange(len(sub_train_list))
-                    bootstrap_train_set.append(cp.deepcopy(sub_train_list[index]))
-                sub_train_list = np.array(bootstrap_train_set)
-
             test_sub_set = np.array(sub_test_list)
             train_sub_set = np.array(sub_train_list)
             numpy_array = ID3_result.fit_predict(train_sub_set, test_sub_set)
