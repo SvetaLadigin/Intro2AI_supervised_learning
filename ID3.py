@@ -200,10 +200,10 @@ def experiment(train_set):
             precision_sum += right_counter / (right_counter + wrong_counter)
         precision_avg = precision_sum / 5
         precisions_list.append(precision_avg)
-    plt.plot(M_list, precisions_list, color='green', linestyle='solid', linewidth=1, marker='o', markerfacecolor='green', markersize=5)
-    plt.xlabel('pruning values')
-    plt.ylabel('precision')
-    plt.show()
+    # plt.plot(M_list, precisions_list, color='green', linestyle='solid', linewidth=1, marker='o', markerfacecolor='green', markersize=5)
+    # plt.xlabel('pruning values')
+    # plt.ylabel('precision')
+    # plt.show()
 
 
 def main():
@@ -211,9 +211,8 @@ def main():
     train_set_ndarray = train_set.to_numpy()
 
     '''
-    #  this note is for question 3 - the experiment part   
-    '''
+    #  this note is for question 3 - the experiment part:
     experiment(train_set_ndarray)
-
+    '''
 if __name__ == '__main__':
     main()
