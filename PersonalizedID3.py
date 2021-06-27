@@ -1,13 +1,11 @@
 import numpy as np
 import pandas as pd
-import copy as cp
 import matplotlib.pyplot as plt
-import random as rd
 from sklearn.model_selection import KFold
 
 class decisionTree(object):
 
-    def __init__(self, data, M, pruning):
+    def __init__(self, data, M, pruning,depth_limit):
         self.data = data
         self.classification = None
         self.divider_feature = None
@@ -16,6 +14,7 @@ class decisionTree(object):
         self.small = None
         self.pruning = pruning
         self.M = M
+        self.depth_limit=depth_limit
 
     def get_classification_tree(self):
         self.divider_feature, self.divider_value = self.get_divider_feature()
@@ -29,9 +28,10 @@ class decisionTree(object):
             row_to_split_by += 1
         small_array = self.data[:row_to_split_by, :]
         big_array = self.data[row_to_split_by:, :]
-        self.big = decisionTree(big_array, self.M, self.pruning)
+
+        self.big = decisionTree(big_array, self.M, self.pruning, self.depth_limit-1)
         self.big.get_classification_tree()
-        self.small = decisionTree(small_array, self.M, self.pruning)
+        self.small = decisionTree(small_array, self.M, self.pruning, self.depth_limit-1)
         self.small.get_classification_tree()
 
     def get_id3_value(self, feature, value):
@@ -55,45 +55,18 @@ class decisionTree(object):
 
         small_subjects = small_sick + small_healthy
         big_subjects = big_sick + big_healthy
-        #TODO - Q4 improvment - check if its good or not
 
-        healthy_sum = big_healthy + small_healthy
-        sick_sum = big_sick + small_sick
-        # if healthy_sum / sick_sum >= 80 or sick_sum / healthy_sum >= 10:
-        #     return None
-        # TODO -END
+        if self.depth_limit == 0:
+            return None
+
         if self.pruning == True :
             if (small_subjects < self.M):
-                #return None
-                if (small_sick and healthy_sum / sick_sum > 120):
-                    return None
-                if (small_healthy and sick_sum / healthy_sum > 20):
-                    return None
+                return None
             if(big_subjects < self.M):
-                #return None
-                if (big_sick and healthy_sum / sick_sum > 120):
-                    return None
-                if (big_healthy and sick_sum / healthy_sum > 20):
-                    return None
-
-            # TODO - Q4 improvment - check if its good or not
-
-            # if small_subjects < self.M:
-            #     if healthy_sum / sick_sum >= 8 and small_healthy == 1:
-            #         return None
-            #     elif sick_sum / healthy_sum >= 1 and small_sick == 1:
-            #         return None
-            # if big_subjects < self.M:
-            #     if healthy_sum / sick_sum >= 8 and big_healthy == 1:
-            #         return None
-            #     elif sick_sum / healthy_sum >= 1 and big_sick == 1:
-            #         return None
-            # TODO -END
-
+                return None
         else:
             if small_subjects == 0 or big_subjects == 0 :
                 return None
-
 
         sick_ratio = (small_sick + big_sick) / len(self.data)
         healthy_ratio = (small_healthy + big_healthy) / len(self.data)
@@ -158,14 +131,12 @@ class decisionTree(object):
         elif m_num == 0:
             self.classification = 'B'
             return True
-        # TODO - added for Q4 - check if its goo or remove it
         if m_num/b_num >=10 and b_num <=7:
             self.classification = 'M'
             return True
-        # if b_num/m_num >= 100 and m_num <=3:
-        #     self.classification = 'B'
-        #     return True
-        # TODO - END
+        if b_num/m_num >= 60 and m_num <=3:
+            self.classification = 'B'
+            return True
 
         return False
 
@@ -186,174 +157,88 @@ class decisionTree(object):
 
 class PersonalizedID3(object):
 
-    def __init__(self, M=1, pruning=True):
+    def __init__(self, M=2, pruning=True, depth_limit=5):
         self.decision_tree = None
         self.pruning = pruning
         self.M = M
+        self.depth_limit = depth_limit
 
     def fit_predict(self, train, test):
-        bootstrap_train_set = []
-        size_of_boot_strap = len(train)*15
-        if size_of_boot_strap %5 == 1:
-            size_of_boot_strap +=4
-        if size_of_boot_strap % 5 == 2:
-            size_of_boot_strap += 3
-        if size_of_boot_strap % 5 == 3:
-            size_of_boot_strap += 2
-        if size_of_boot_strap % 5 == 4:
-            size_of_boot_strap += 1
-        for i in range(size_of_boot_strap):
-            index = rd.randrange(len(train))
-            bootstrap_train_set.append(cp.deepcopy(train[index]))
-        train = np.array(bootstrap_train_set)
 
-        train_1 ,train_2, train_3,train_4, train_5 = np.vsplit(train, 5)
-
-        self.decision_tree = decisionTree(train_1, self.M, self.pruning)
+        self.decision_tree = decisionTree(train, self.M, self.pruning,self.depth_limit)
         self.decision_tree.get_classification_tree()
-        decision_tree_1 = cp.deepcopy(self.decision_tree)
-
-        self.decision_tree = decisionTree(train_2, self.M, self.pruning)
-        self.decision_tree.get_classification_tree()
-        decision_tree_2 = cp.deepcopy(self.decision_tree)
-
-        self.decision_tree = decisionTree(train_3, self.M, self.pruning)
-        self.decision_tree.get_classification_tree()
-        decision_tree_3 = cp.deepcopy(self.decision_tree)
-
-        self.decision_tree = decisionTree(train_4 ,self.M, self.pruning)
-        self.decision_tree.get_classification_tree()
-        decision_tree_4 = cp.deepcopy(self.decision_tree)
-
-        self.decision_tree = decisionTree(train_5, self.M, self.pruning)
-        self.decision_tree.get_classification_tree()
-        decision_tree_5 = cp.deepcopy(self.decision_tree)
 
         classification_list = []
         for row in test:
-            current_decision_tree_1 = decision_tree_1
-            while current_decision_tree_1.divider_feature is not None:
-                if row[current_decision_tree_1.divider_feature] < current_decision_tree_1.divider_value:
-                    current_decision_tree_1 = current_decision_tree_1.small
+            current_decision_tree = self.decision_tree
+            while current_decision_tree.divider_feature is not None:
+                if row[current_decision_tree.divider_feature] < current_decision_tree.divider_value:
+                    current_decision_tree = current_decision_tree.small
                 else:
-                    current_decision_tree_1 = current_decision_tree_1.big
+                    current_decision_tree = current_decision_tree.big
 
-            current_decision_tree_2 = decision_tree_2
-            while current_decision_tree_2.divider_feature is not None:
-                if row[current_decision_tree_2.divider_feature] < current_decision_tree_2.divider_value:
-                    current_decision_tree_2 = current_decision_tree_2.small
-                else:
-                    current_decision_tree_2 = current_decision_tree_2.big
-
-            current_decision_tree_3 = decision_tree_3
-            while current_decision_tree_3.divider_feature is not None:
-                if row[current_decision_tree_3.divider_feature] < current_decision_tree_3.divider_value:
-                    current_decision_tree_3 = current_decision_tree_3.small
-                else:
-                    current_decision_tree_3 = current_decision_tree_3.big
-
-            current_decision_tree_4 = decision_tree_4
-            while current_decision_tree_4.divider_feature is not None:
-                if row[current_decision_tree_4.divider_feature] < current_decision_tree_4.divider_value:
-                    current_decision_tree_4 = current_decision_tree_4.small
-                else:
-                    current_decision_tree_4 = current_decision_tree_4.big
-
-            current_decision_tree_5 = decision_tree_5
-            while current_decision_tree_5.divider_feature is not None:
-                if row[current_decision_tree_5.divider_feature] < current_decision_tree_5.divider_value:
-                    current_decision_tree_5 = current_decision_tree_5.small
-                else:
-                    current_decision_tree_5 = current_decision_tree_5.big
-
-            M_counter = 0
-            B_counter = 0
-
-            if current_decision_tree_1.classification == 'M':
-                M_counter += 1
-            else:
-                B_counter += 1
-            if current_decision_tree_2.classification == 'M':
-                M_counter += 1
-            else:
-                B_counter += 1
-            if current_decision_tree_3.classification == 'M':
-                M_counter += 1
-            else:
-                B_counter += 1
-            if current_decision_tree_4.classification == 'M':
-                M_counter += 1
-            else:
-                B_counter += 1
-            if current_decision_tree_5.classification == 'M':
-                M_counter += 1
-            else:
-                B_counter += 1
-            if M_counter > B_counter:
+            if current_decision_tree.classification == 'M':
                 classification_list.append(1)
             else:
                 classification_list.append(0)
         return classification_list
 
-#  TODO REMOVE PRINTS AND CALC FOR LOSS VALUE
-def experiment(train_set):
-    bootstrap_flag = False
-
-    M_list = [2]  # ,3,4 ,5,6,7,8,9, 10,11,12,13,14, 15,16,17,18,19, 20, 25, 50]
-    precisions_list = []
-    sum_loss = 0
-
-    indexes=0
-    for M in M_list:
-        precision_sum = 0
-        ID3_result = PersonalizedID3(M)
-        kf = KFold(n_splits=5, shuffle=True, random_state=319649778)
-        indexes = kf.split(train_set)
-        for train_set_index, test_set_index in indexes:
-            sub_test_list = []
-            sub_train_list = []
-            for i in range(len(train_set)):
-                if i in train_set_index:
-                    sub_train_list.append(train_set[i])
-                else:
-                    sub_test_list.append(train_set[i])
-            test_sub_set = np.array(sub_test_list)
-            train_sub_set = np.array(sub_train_list)
-            numpy_array = ID3_result.fit_predict(train_sub_set, test_sub_set)
-            right_counter = 0
-            wrong_counter_FP = 0
-            wrong_counter_FN = 0
-            for i in range(len(numpy_array)):
-                if (numpy_array[i] == 1 and test_sub_set[i][0] == 'M') or \
-                        (numpy_array[i] == 0 and test_sub_set[i][0] == 'B'):
-                    right_counter += 1
-                elif numpy_array[i] == 0 and test_sub_set[i][0] == 'M':
-                    wrong_counter_FN += 8
-                else:
-                    wrong_counter_FP += 1
-            print("wrong counter FN:"+str(wrong_counter_FN))
-            print("wrong counter FP:"+str(wrong_counter_FP))
-            sum_loss += wrong_counter_FN+wrong_counter_FP
-            precision_sum += right_counter / (right_counter + wrong_counter_FN+wrong_counter_FP)
-        print("avg loss:" + str(sum_loss / 5))
-        precision_avg = precision_sum / 5
-        precisions_list.append(precision_avg)
-    print(precisions_list)
-    # plt.plot(M_list, precisions_list, color='green', linestyle='solid', linewidth=1, marker='o',
-    #          markerfacecolor='green', markersize=5)
-    # plt.xlabel('pruning values')
-    # plt.ylabel('precision')
-    # plt.show()
+'''
+# experiment function is for testing our code 
+'''
+# def experiment(train_set):
+#
+#     precisions_list = []
+#     indexes=0
+#     precision_sum = 0
+#     ID3_result = PersonalizedID3()
+#     kf = KFold(n_splits=5, shuffle=True, random_state=319649778)
+#     indexes = kf.split(train_set)
+#     sum_loss = 0
+#
+#     for train_set_index, test_set_index in indexes:
+#         sub_test_list = []
+#         sub_train_list = []
+#         for i in range(len(train_set)):
+#             if i in train_set_index:
+#                 sub_train_list.append(train_set[i])
+#             else:
+#                 sub_test_list.append(train_set[i])
+#         test_sub_set = np.array(sub_test_list)
+#         train_sub_set = np.array(sub_train_list)
+#         numpy_array = ID3_result.fit_predict(train_sub_set, test_sub_set)
+#         right_counter = 0
+#         wrong_counter_FP = 0
+#         wrong_counter_FN = 0
+#         for i in range(len(numpy_array)):
+#             if (numpy_array[i] == 1 and test_sub_set[i][0] == 'M') or \
+#                     (numpy_array[i] == 0 and test_sub_set[i][0] == 'B'):
+#                 right_counter += 1
+#             elif numpy_array[i] == 0 and test_sub_set[i][0] == 'M':
+#                 wrong_counter_FN += 8
+#             else:
+#                 wrong_counter_FP += 1
+#         # print("wrong counter FN:"+str(wrong_counter_FN))
+#         # print("wrong counter FP:"+str(wrong_counter_FP))
+#         sum_loss += wrong_counter_FN+wrong_counter_FP
+#         precision_sum += right_counter / (right_counter + wrong_counter_FN+wrong_counter_FP)
+#     #print("avg loss:" + str(sum_loss / 5))
+#     precision_avg = precision_sum / 5
+#     precisions_list.append(precision_avg)
+#     # print(precisions_list)
+#     # plt.plot(M_list, precisions_list, color='green', linestyle='solid', linewidth=1, marker='o',
+#     #          markerfacecolor='green', markersize=5)
+#     # plt.xlabel('pruning values')
+#     # plt.ylabel('precision')
+#     # plt.show()
 
 
 def main():
     train_set = pd.read_csv('train.csv', sep=',', header=None)
     train_set_ndarray = train_set.to_numpy()
 
-    '''
-    #  this note is for question 3 - the experiment part   
-    '''
-    experiment(train_set_ndarray)
+
+    #  experiment(train_set_ndarray)
 
 if __name__ == '__main__':
     main()
